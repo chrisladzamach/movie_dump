@@ -14,6 +14,7 @@ export function SearchPage() {
   const [localResults, setLocalResults] = useState<Movie[]>([]);
   const [tmdbResults, setTmdbResults] = useState<TmdbSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [selectedMovie, setSelectedMovie] = useState<TmdbMovieDetails | null>(null);
   const [watchedByFilter, setWatchedByFilter] = useState<'any' | 'me' | 'other' | 'both'>('any');
   const { triggerRefresh } = useNotifications();
@@ -25,6 +26,7 @@ export function SearchPage() {
       return;
     }
     setLoading(true);
+    setError('');
     try {
       if (tab === 'local') {
         const results = await getAllMovies({ search: q, watchedBy: watchedByFilter === 'any' ? undefined : watchedByFilter });
@@ -34,7 +36,9 @@ export function SearchPage() {
         setTmdbResults(results);
       }
     } catch (err) {
-      console.error(err);
+      setError((err as Error).message || 'Error al buscar');
+      if (tab === 'local') setLocalResults([]);
+      else setTmdbResults([]);
     } finally {
       setLoading(false);
     }
@@ -121,6 +125,16 @@ export function SearchPage() {
       )}
 
       {loading && <p className="text-muted text-center py-8">Buscando...</p>}
+
+      {error && (
+        <p className="text-accent text-sm text-center py-4 bg-accent/10 rounded-xl border border-accent/20">
+          {error}
+        </p>
+      )}
+
+      {tab === 'tmdb' && !loading && !error && tmdbResults.length === 0 && query.trim() && (
+        <p className="text-muted text-center py-8">No se encontraron películas</p>
+      )}
 
       {tab === 'tmdb' && !loading && (
         <div className="space-y-3">

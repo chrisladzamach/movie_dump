@@ -6,16 +6,32 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
 async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${TMDB_BASE}${path}`);
-  url.searchParams.set('api_key', env.tmdbApiKey);
   url.searchParams.set('language', 'es-ES');
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
   }
 
-  const response = await fetch(url.toString());
-  if (!response.ok) {
-    throw new Error(`TMDB error: ${response.status}`);
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+
+  if (env.tmdb.mode === 'bearer') {
+    headers.Authorization = `Bearer ${env.tmdb.value}`;
+  } else {
+    url.searchParams.set('api_key', env.tmdb.value);
   }
+
+  const response = await fetch(url.toString(), { headers });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      status_message?: string;
+      errors?: string[];
+    };
+    const detail = body.status_message || body.errors?.[0];
+    throw new Error(detail || `TMDB error: ${response.status}`);
+  }
+
   return response.json() as Promise<T>;
 }
 
