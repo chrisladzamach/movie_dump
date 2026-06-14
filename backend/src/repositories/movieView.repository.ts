@@ -1,5 +1,6 @@
 import { pool } from '../config/database';
-import { MovieView, MovieViewWithUser } from '../models/types';
+import { MovieView, MovieViewWithUser, Genre } from '../models/types';
+import { parseJsonField } from '../utils/jsonField';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 export class MovieViewRepository {
@@ -138,7 +139,7 @@ export class MovieViewRepository {
 
     const counts = new Map<string, number>();
     for (const row of rows) {
-      const genres = row.genres ? JSON.parse(row.genres as string) : [];
+      const genres = parseJsonField<Genre[]>(row.genres) || [];
       for (const g of genres) {
         counts.set(g.name, (counts.get(g.name) || 0) + 1);
       }

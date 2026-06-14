@@ -4,7 +4,40 @@ import { CastMember, Genre, TmdbSearchResult } from '../models/types';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
-async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+type AuthStrategy = { mode: 'bearer' | 'api_key'; value: string; label: string };
+
+function buildAuthStrategies(): AuthStrategy[] {
+  const strategies: AuthStrategy[] = [];
+  const { accessToken, apiKey } = env.tmdb;
+
+  if (accessToken) {
+    strategies.push({ mode: 'bearer', value: accessToken, label: 'TMDB_ACCESS_TOKEN' });
+  }
+
+  if (apiKey) {
+    strategies.push({ mode: 'api_key', value: apiKey, label: 'TMDB_API_KEY (v3)' });
+
+    if (!accessToken && (apiKey.startsWith('eyJ') || apiKey.length > 40)) {
+      strategies.push({ mode: 'bearer', value: apiKey, label: 'TMDB_API_KEY (bearer)' });
+    }
+  }
+
+  return strategies;
+}
+
+async function parseTmdbError(response: Response): Promise<string> {
+  const body = (await response.json().catch(() => ({}))) as {
+    status_message?: string;
+    errors?: string[];
+  };
+  return body.status_message || body.errors?.[0] || `TMDB error: ${response.status}`;
+}
+
+async function tmdbFetchOnce<T>(
+  path: string,
+  params: Record<string, string>,
+  strategy: AuthStrategy
+): Promise<{ ok: true; data: T } | { ok: false; status: number; message: string }> {
   const url = new URL(`${TMDB_BASE}${path}`);
   url.searchParams.set('language', 'es-ES');
   for (const [key, value] of Object.entries(params)) {
@@ -15,24 +48,46 @@ async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): 
     Accept: 'application/json',
   };
 
-  if (env.tmdb.mode === 'bearer') {
-    headers.Authorization = `Bearer ${env.tmdb.value}`;
+  if (strategy.mode === 'bearer') {
+    headers.Authorization = `Bearer ${strategy.value}`;
   } else {
-    url.searchParams.set('api_key', env.tmdb.value);
+    url.searchParams.set('api_key', strategy.value);
   }
 
   const response = await fetch(url.toString(), { headers });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as {
-      status_message?: string;
-      errors?: string[];
-    };
-    const detail = body.status_message || body.errors?.[0];
-    throw new Error(detail || `TMDB error: ${response.status}`);
+    return { ok: false, status: response.status, message: await parseTmdbError(response) };
   }
 
-  return response.json() as Promise<T>;
+  return { ok: true, data: (await response.json()) as T };
+}
+
+async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+  const strategies = buildAuthStrategies();
+
+  if (strategies.length === 0) {
+    throw new Error('No hay credenciales TMDB configuradas');
+  }
+
+  let lastMessage = 'Credenciales TMDB inválidas';
+
+  for (const strategy of strategies) {
+    const result = await tmdbFetchOnce<T>(path, params, strategy);
+    if (result.ok) return result.data;
+
+    lastMessage = result.message;
+
+    if (result.status === 401 && strategies.length > 1) {
+      continue;
+    }
+
+    throw new Error(lastMessage);
+  }
+
+  throw new Error(
+    `${lastMessage}. Verifica TMDB_API_KEY (clave v3) o TMDB_ACCESS_TOKEN (Read Access Token) en Render.`
+  );
 }
 
 export function getPosterUrl(posterPath: string | null): string | null {

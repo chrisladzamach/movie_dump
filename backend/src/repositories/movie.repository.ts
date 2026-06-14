@@ -1,12 +1,13 @@
 import { pool } from '../config/database';
-import { Genre, CastMember, Movie, RegisterMovieInput } from '../models/types';
+import { CastMember, Genre, Movie, RegisterMovieInput } from '../models/types';
+import { parseJsonField } from '../utils/jsonField';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 function parseMovie(row: RowDataPacket): Movie {
   return {
     ...row,
-    genres: row.genres ? JSON.parse(row.genres as string) : null,
-    cast_data: row.cast_data ? JSON.parse(row.cast_data as string) : null,
+    genres: parseJsonField<Genre[]>(row.genres),
+    cast_data: parseJsonField<CastMember[]>(row.cast_data),
   } as Movie;
 }
 

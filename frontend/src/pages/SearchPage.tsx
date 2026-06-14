@@ -5,6 +5,7 @@ import { addToWatchlist } from '../services/watchlist.service';
 import { TmdbSearchResult, TmdbMovieDetails, Movie, getPosterUrl } from '../types';
 import { MovieRegisterModal } from '../components/MovieRegisterModal';
 import { useNotifications } from '../hooks/useNotifications';
+import { ApiError } from '../services/api';
 
 type Tab = 'local' | 'tmdb';
 
@@ -36,7 +37,11 @@ export function SearchPage() {
         setTmdbResults(results);
       }
     } catch (err) {
-      setError((err as Error).message || 'Error al buscar');
+      if (err instanceof ApiError && err.status === 401) {
+        setError('Sesión expirada. Cierra sesión e inicia de nuevo.');
+      } else {
+        setError((err as Error).message || 'Error al buscar');
+      }
       if (tab === 'local') setLocalResults([]);
       else setTmdbResults([]);
     } finally {

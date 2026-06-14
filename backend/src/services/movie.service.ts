@@ -3,15 +3,16 @@ import { movieViewRepository } from '../repositories/movieView.repository';
 import { watchlistRepository } from '../repositories/watchlist.repository';
 import { calculateOverallRating, validateRatings } from '../utils/rating';
 import { emitDataUpdate, emitNotification } from '../config/socket';
-import { MovieFilters, MovieWithViews, RegisterMovieInput, Movie } from '../models/types';
+import { MovieFilters, MovieWithViews, RegisterMovieInput, Movie, CastMember, Genre } from '../models/types';
 import { pool } from '../config/database';
+import { parseJsonField } from '../utils/jsonField';
 import { RowDataPacket } from 'mysql2';
 
 function parseMovie(row: RowDataPacket) {
   return {
     ...row,
-    genres: row.genres ? JSON.parse(row.genres as string) : null,
-    cast_data: row.cast_data ? JSON.parse(row.cast_data as string) : null,
+    genres: parseJsonField<Genre[]>(row.genres),
+    cast_data: parseJsonField<CastMember[]>(row.cast_data),
   };
 }
 
