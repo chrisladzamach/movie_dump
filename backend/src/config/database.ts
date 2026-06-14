@@ -10,6 +10,12 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   namedPlaceholders: true,
+  ...(env.db.ssl && {
+    ssl: {
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: true,
+    },
+  }),
 });
 
 export async function testConnection(): Promise<void> {
