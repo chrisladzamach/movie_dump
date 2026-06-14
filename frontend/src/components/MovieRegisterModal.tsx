@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TmdbMovieDetails, RegisterMoviePayload, calculateOverall, todayISO, getPosterUrl } from '../types';
+import { TmdbMovieDetails, RegisterMoviePayload, calculateOverall, todayISO, getPosterUrl, formatRating } from '../types';
 import { RatingInput } from './RatingInput';
 import { registerMovie } from '../services/movie.service';
 import { checkOtherUserView } from '../services/movie.service';
@@ -119,7 +119,7 @@ export function MovieRegisterModal({ movie, onClose, onSuccess, initialView }: M
               </span>
               <span className="text-muted">
                 {' '}
-                · ★ {otherViewInfo.otherView.overall_rating} · {otherViewInfo.otherView.watched_at}
+                · ★ {formatRating(otherViewInfo.otherView.overall_rating)} · {otherViewInfo.otherView.watched_at}
               </span>
             </div>
           )}

@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { getPosterUrl } from '../types';
+import { formatRating, getPosterUrl, toBoolean } from '../types';
 
 interface MovieCardProps {
   id?: number;
   title: string;
   posterPath?: string | null;
-  rating?: number;
+  rating?: number | string;
   watchedBy?: string;
   username?: string;
   watchedAt?: string;
@@ -39,12 +39,12 @@ export function MovieCard({
           className="w-full h-full object-cover"
           loading="lazy"
         />
-        {isFavorite && (
+        {toBoolean(isFavorite) && (
           <span className="absolute top-1 right-1 text-accent text-sm">❤️</span>
         )}
-        {rating !== undefined && (
+        {rating != null && rating !== '' && (
           <span className="absolute bottom-1 left-1 bg-black/80 text-primary text-xs font-bold px-1.5 py-0.5 rounded">
-            ★ {rating.toFixed(1)}
+            ★ {formatRating(rating)}
           </span>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getStats } from '../services/stats.service';
-import { StatsOverview, getPosterUrl } from '../types';
+import { StatsOverview, getPosterUrl, formatRating } from '../types';
 import { useNotifications } from '../hooks/useNotifications';
 
 export function StatsPage() {
@@ -24,7 +24,7 @@ export function StatsPage() {
 
   const statCards = [
     { label: 'Películas vistas', value: stats.totalWatched, icon: '🎬' },
-    { label: 'Promedio valoración', value: `★ ${stats.averageRating.toFixed(1)}`, icon: '⭐' },
+    { label: 'Promedio valoración', value: `★ ${formatRating(stats.averageRating)}`, icon: '⭐' },
     { label: 'Categoría top', value: stats.topGenre || '—', icon: '🎭' },
     { label: 'Favoritas', value: stats.totalFavorites, icon: '❤️' },
   ];
@@ -65,7 +65,7 @@ export function StatsPage() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium line-clamp-1">{movie.title}</p>
             </div>
-            <span className="text-primary font-bold text-sm">★ {movie.overall_rating.toFixed(1)}</span>
+            <span className="text-primary font-bold text-sm">★ {formatRating(movie.overall_rating)}</span>
           </div>
         ))}
         {stats.topRatedMovies.length === 0 && (

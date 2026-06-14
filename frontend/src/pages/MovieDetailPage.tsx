@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getMovieById } from '../services/movie.service';
 import { getComments, addComment } from '../services/comment.service';
 import { getTmdbDetails } from '../services/tmdb.service';
-import { Movie, Comment, getPosterUrl, TmdbMovieDetails } from '../types';
+import { Movie, Comment, getPosterUrl, TmdbMovieDetails, formatRating } from '../types';
 import { MovieRegisterModal } from '../components/MovieRegisterModal';
 
 export function MovieDetailPage() {
@@ -90,7 +90,7 @@ export function MovieDetailPage() {
         {view && (
           <div className="bg-card rounded-xl p-4 mt-4 border border-white/5">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-primary font-bold text-xl">★ {view.overall_rating.toFixed(1)}</span>
+              <span className="text-primary font-bold text-xl">★ {formatRating(view.overall_rating)}</span>
               {view.is_favorite && <span>❤️ Favorita</span>}
             </div>
             <p className="text-xs text-muted mb-2">Vista el {view.watched_at}</p>
@@ -115,7 +115,7 @@ export function MovieDetailPage() {
         {movie.other_view && (
           <div className="bg-secondary/10 rounded-xl p-4 mt-3 border border-secondary/20">
             <p className="text-sm font-medium text-secondary">
-              {movie.other_view.username} · ★ {movie.other_view.overall_rating.toFixed(1)}
+              {movie.other_view.username} · ★ {formatRating(movie.other_view.overall_rating)}
             </p>
             <p className="text-xs text-muted mt-1">Vista el {movie.other_view.watched_at}</p>
             {movie.other_view.observation && (

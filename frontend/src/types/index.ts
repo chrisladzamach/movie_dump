@@ -166,3 +166,16 @@ export function calculateOverall(
 ): number {
   return Math.round(((photography + soundtrack + screenplay + cast) / 4) * 100) / 100;
 }
+
+export function toNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function formatRating(value: unknown, digits = 1): string {
+  return toNumber(value).toFixed(digits);
+}
+
+export function toBoolean(value: unknown): boolean {
+  return value === true || value === 1 || value === '1';
+}
