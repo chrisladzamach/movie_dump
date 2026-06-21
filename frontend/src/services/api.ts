@@ -41,11 +41,16 @@ export async function apiFetch<T>(
   try {
     data = text ? JSON.parse(text) : undefined;
   } catch {
-    console.error(`Respuesta no JSON de ${path}:`, text);
-    throw new ApiError(
-      `Respuesta no válida del servidor: ${text.slice(0, 200)}`,
-      response.status
-    );
+    console.error(`Respuesta no JSON de ${path} (status ${response.status}):`, text);
+    if (!response.ok) {
+      throw new ApiError(
+        `Error ${response.status}: ${text.slice(0, 200)}`,
+        response.status
+      );
+    }
+    // Si la respuesta fue exitosa pero no es JSON, devolver undefined
+    // para que las operaciones de escritura no fallen innecesariamente.
+    return undefined as T;
   }
 
   if (!response.ok) {

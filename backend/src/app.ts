@@ -15,4 +15,9 @@ app.get('/health', (_req, res) => {
 app.use('/api', routes);
 app.use(errorMiddleware);
 
+// Manejador de 404 explícito para evitar respuestas HTML o texto plano.
+app.use((_req, res) => {
+  res.status(404).json({ message: 'Ruta no encontrada' });
+});
+
 export default app;
