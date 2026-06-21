@@ -160,7 +160,8 @@ export function todayISO(): string {
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '';
-  const [year, month, day] = value.split('-');
+  const isoDate = value.split('T')[0];
+  const [year, month, day] = isoDate.split('-');
   if (!year || !month || !day) return value;
   return `${day}/${month}/${year}`;
 }
