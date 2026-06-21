@@ -21,10 +21,13 @@ export function MovieDetailModal({ movieId, onClose }: MovieDetailModalProps) {
   const [movie, setMovie] = useState<Movie | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [editModal, setEditModal] = useState<TmdbMovieDetails | null>(null);
 
   const load = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [movieData, commentsData] = await Promise.all([
         getMovieById(movieId),
@@ -32,8 +35,9 @@ export function MovieDetailModal({ movieId, onClose }: MovieDetailModalProps) {
       ]);
       setMovie(movieData);
       setComments(commentsData);
-    } catch {
-      onClose();
+    } catch (err) {
+      console.error('Error cargando detalle:', err);
+      setError(err instanceof Error ? err.message : 'No se pudo cargar la película');
     } finally {
       setLoading(false);
     }
@@ -57,10 +61,35 @@ export function MovieDetailModal({ movieId, onClose }: MovieDetailModalProps) {
     setEditModal(details);
   };
 
-  if (loading || !movie) {
+  if (loading) {
     return (
       <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center">
         <div className="text-muted">Cargando...</div>
+      </div>
+    );
+  }
+
+  if (error || !movie) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4">
+        <div className="bg-surface rounded-2xl p-6 max-w-sm w-full text-center">
+          <p className="text-accent mb-2">Error al cargar</p>
+          <p className="text-sm text-gray-300 mb-4">{error || 'No se encontró la película'}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={load}
+              className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-semibold"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={onClose}
+              className="bg-card text-white px-4 py-2 rounded-lg text-sm"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
