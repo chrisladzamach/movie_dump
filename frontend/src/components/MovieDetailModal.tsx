@@ -25,22 +25,32 @@ export function MovieDetailModal({ movieId, onClose }: MovieDetailModalProps) {
   const [newComment, setNewComment] = useState('');
   const [editModal, setEditModal] = useState<TmdbMovieDetails | null>(null);
 
-  const load = async () => {
+  const loadMovie = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [movieData, commentsData] = await Promise.all([
-        getMovieById(movieId),
-        getComments(movieId),
-      ]);
+      const movieData = await getMovieById(movieId);
       setMovie(movieData);
-      setComments(commentsData);
     } catch (err) {
-      console.error('Error cargando detalle:', err);
+      console.error('Error cargando película:', err);
       setError(err instanceof Error ? err.message : 'No se pudo cargar la película');
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadComments = async () => {
+    try {
+      const commentsData = await getComments(movieId);
+      setComments(commentsData);
+    } catch (err) {
+      console.error('Error cargando comentarios:', err);
+    }
+  };
+
+  const load = async () => {
+    await loadMovie();
+    await loadComments();
   };
 
   useEffect(() => {

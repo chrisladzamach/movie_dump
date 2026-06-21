@@ -35,14 +35,30 @@ export async function apiFetch<T>(
     headers,
   });
 
+  const text = await response.text();
+
+  let data: unknown;
+  try {
+    data = text ? JSON.parse(text) : undefined;
+  } catch {
+    console.error(`Respuesta no JSON de ${path}:`, text);
+    throw new ApiError(
+      `Respuesta no válida del servidor: ${text.slice(0, 200)}`,
+      response.status
+    );
+  }
+
   if (!response.ok) {
-    const data = await response.json().catch(() => ({ message: 'Error desconocido' }));
-    throw new ApiError(data.message || 'Error en la solicitud', response.status);
+    const message =
+      typeof data === 'object' && data !== null && 'message' in data
+        ? String((data as { message?: unknown }).message)
+        : 'Error en la solicitud';
+    throw new ApiError(message, response.status);
   }
 
   if (response.status === 204) {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  return data as T;
 }
