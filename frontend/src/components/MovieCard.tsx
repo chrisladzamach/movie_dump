@@ -54,7 +54,7 @@ export function MovieCard({
   if (compact) {
     const content = (
       <div
-        className="relative flex-shrink-0 w-28 group"
+        className={`relative flex-shrink-0 w-28 group ${onClick ? 'cursor-pointer' : ''}`}
         onClick={onClick}
         role={onClick ? 'button' : undefined}
       >
@@ -84,7 +84,7 @@ export function MovieCard({
   if (layout === 'list') {
     const content = (
       <div
-        className="relative flex gap-3 w-full group"
+        className={`relative flex gap-3 w-full group ${onClick ? 'cursor-pointer' : ''}`}
         onClick={onClick}
         role={onClick ? 'button' : undefined}
       >
@@ -111,7 +111,7 @@ export function MovieCard({
 
   const content = (
     <div
-      className="relative flex-shrink-0 w-full group"
+      className={`relative flex-shrink-0 w-full group ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
     >

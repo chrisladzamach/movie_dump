@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getLatestMovies } from '../services/movie.service';
 import { LatestMovie } from '../types';
 import { MovieCard } from '../components/MovieCard';
+import { MovieDetailModal } from '../components/MovieDetailModal';
 import { useNotifications } from '../hooks/useNotifications';
 
 type ViewMode = 'grid' | 'list';
@@ -11,6 +12,7 @@ export function HomePage() {
   const [movies, setMovies] = useState<LatestMovie[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
   const { refreshKey } = useNotifications();
 
   useEffect(() => {
@@ -68,7 +70,6 @@ export function HomePage() {
           {movies.map((movie) => (
             <MovieCard
               key={`${movie.movie_id}-${movie.user_id}`}
-              id={movie.movie_id}
               title={movie.title}
               posterPath={movie.poster_path}
               rating={movie.overall_rating}
@@ -76,9 +77,14 @@ export function HomePage() {
               watchedAt={movie.watched_at}
               isFavorite={movie.is_favorite}
               layout={viewMode}
+              onClick={() => setSelectedMovieId(movie.movie_id)}
             />
           ))}
         </div>
+      )}
+
+      {selectedMovieId && (
+        <MovieDetailModal movieId={selectedMovieId} onClose={() => setSelectedMovieId(null)} />
       )}
     </div>
   );
