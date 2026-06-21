@@ -48,9 +48,6 @@ export function HomePage() {
               </>
             )}
           </button>
-          <Link to="/movies" className="text-xs text-secondary">
-            Ver todas →
-          </Link>
         </div>
       </div>
 
