@@ -5,9 +5,12 @@ import { LatestMovie } from '../types';
 import { MovieCard } from '../components/MovieCard';
 import { useNotifications } from '../hooks/useNotifications';
 
+type ViewMode = 'grid' | 'list';
+
 export function HomePage() {
   const [movies, setMovies] = useState<LatestMovie[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { refreshKey } = useNotifications();
 
   useEffect(() => {
@@ -27,9 +30,28 @@ export function HomePage() {
 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-sm font-semibold text-primary uppercase tracking-wider">Recientes</h2>
-        <Link to="/movies" className="text-xs text-secondary">
-          Ver todas →
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))}
+            className="text-xs bg-card border border-white/10 rounded-lg px-2.5 py-1.5 text-white flex items-center gap-1.5"
+            aria-label={viewMode === 'grid' ? 'Cambiar a vista lista' : 'Cambiar a vista grid'}
+          >
+            {viewMode === 'grid' ? (
+              <>
+                <span>☰</span>
+                <span>Lista</span>
+              </>
+            ) : (
+              <>
+                <span>⊞</span>
+                <span>Grid</span>
+              </>
+            )}
+          </button>
+          <Link to="/movies" className="text-xs text-secondary">
+            Ver todas →
+          </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -45,7 +67,7 @@ export function HomePage() {
           </Link>
         </div>
       ) : (
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+        <div className={viewMode === 'grid' ? 'grid grid-cols-3 gap-3' : 'flex flex-col gap-3'}>
           {movies.map((movie) => (
             <MovieCard
               key={`${movie.movie_id}-${movie.user_id}`}
@@ -56,6 +78,7 @@ export function HomePage() {
               username={movie.username}
               watchedAt={movie.watched_at}
               isFavorite={movie.is_favorite}
+              layout={viewMode}
             />
           ))}
         </div>

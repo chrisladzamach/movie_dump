@@ -158,6 +158,13 @@ export function todayISO(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+export function formatDate(value: string | null | undefined): string {
+  if (!value) return '';
+  const [year, month, day] = value.split('-');
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+}
+
 export function calculateOverall(
   photography: number,
   soundtrack: number,
