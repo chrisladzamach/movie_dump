@@ -51,6 +51,7 @@ export interface LatestMovie extends MovieView {
   title: string;
   poster_path: string | null;
   tmdb_id: number;
+  usernames: string;
 }
 
 export interface TmdbSearchResult {

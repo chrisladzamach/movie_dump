@@ -29,7 +29,7 @@ export class MovieController {
   async getLatest(req: AuthRequest, res: Response) {
     try {
       const limit = Number(req.query.limit) || 10;
-      const movies = await movieService.getLatest(limit);
+      const movies = await movieService.getLatest(limit, req.user!.userId);
       res.json(movies);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });

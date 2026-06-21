@@ -40,7 +40,7 @@ export function MovieCard({
 
   const metaEl = (watchedBy || username) && (
     <p className={`text-muted ${compact ? 'text-[10px] mt-0.5' : 'text-xs mt-0.5'}`}>
-      {username ? `@${username}` : watchedBy}
+      {username || watchedBy}
       {watchedAt && ` · ${formatDate(watchedAt)}`}
     </p>
   );

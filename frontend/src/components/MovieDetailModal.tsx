@@ -4,6 +4,7 @@ import { getComments } from '../services/comment.service';
 import { getTmdbDetails } from '../services/tmdb.service';
 import {
   Movie,
+  MovieView,
   Comment,
   LatestMovie,
   TmdbMovieDetails,
@@ -27,7 +28,7 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
   const [loadingMovie, setLoadingMovie] = useState(true);
   const [loadingTmdb, setLoadingTmdb] = useState(true);
   const [editModal, setEditModal] = useState<TmdbMovieDetails | null>(null);
-  const [expandedView, setExpandedView] = useState<'mine' | 'other' | null>(null);
+  const [expandedView, setExpandedView] = useState<string | null>(null);
 
   const loadDetails = async () => {
     setLoadingTmdb(true);
@@ -75,10 +76,9 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
   const cast = tmdbDetails?.cast || [];
   const overview = tmdbDetails?.overview;
 
-  const isMyInitialView = user?.id === initialMovie.user_id;
-  const myView = movie?.my_view || (isMyInitialView ? initialMovie : null);
-  const otherView = movie?.other_view || (!isMyInitialView ? initialMovie : null);
-  const watchedBy = movie?.watched_by;
+  const views = movie?.views?.length ? movie.views : initialMovie.user_id ? ([initialMovie] as MovieView[]) : [];
+  const myView = views.find((v) => v.user_id === user?.id);
+  const watchedByLabel = initialMovie.usernames || movie?.watched_by || initialMovie.username || '';
   const canEdit = Boolean(myView) && myView?.user_id === user?.id;
 
   return (
@@ -102,12 +102,7 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
               <h3 className="font-bold text-white text-lg">{title}</h3>
               <p className="text-xs text-muted mt-1">
                 {releaseYear ? `${releaseYear} · ` : ''}
-                Vista por:{' '}
-                {watchedBy === 'yo'
-                  ? 'Yo'
-                  : watchedBy === 'ambos'
-                  ? 'Ambos'
-                  : watchedBy || `@${initialMovie.username}`}
+                Vista por: {watchedByLabel}
               </p>
               <div className="flex flex-wrap gap-1 mt-2">
                 {genres.map((g) => (
@@ -120,81 +115,63 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
             </div>
           </div>
 
-          {myView && (
-            <div
-              className="bg-card rounded-xl p-4 border border-white/5 cursor-pointer"
-              onClick={() => setExpandedView((prev) => (prev === 'mine' ? null : 'mine'))}
-              role="button"
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium text-white">
-                    ★ {formatRating(myView.overall_rating)} · @{myView.username || initialMovie.username}
-                  </p>
-                  <p className="text-xs text-muted mt-0.5">
-                    Vista el {formatDate(myView.watched_at)}
-                    {myView.is_favorite && ' · ❤️ Favorita'}
-                  </p>
-                </div>
-                <span className="text-muted text-xs">{expandedView === 'mine' ? '▲' : '▼'}</span>
-              </div>
-              {expandedView === 'mine' && (
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <span>Fotografía: {myView.photography_rating}/5</span>
-                    <span>Banda sonora: {myView.soundtrack_rating}/5</span>
-                    <span>Guión: {myView.screenplay_rating}/5</span>
-                    <span>Reparto: {myView.cast_rating}/5</span>
-                  </div>
-                  {'observation' in myView && myView.observation && (
-                    <p className="text-sm text-gray-300 mt-3 italic">"{myView.observation}"</p>
-                  )}
-                  {canEdit && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit();
-                      }}
-                      className="mt-3 text-xs text-secondary"
-                    >
-                      Editar mi registro
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+          {loadingMovie && views.length === 0 && (
+            <p className="text-sm text-muted text-center py-4">Cargando registros...</p>
           )}
 
-          {otherView && (
-            <div
-              className="bg-secondary/10 rounded-xl p-4 border border-secondary/20 cursor-pointer"
-              onClick={() => setExpandedView((prev) => (prev === 'other' ? null : 'other'))}
-              role="button"
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium text-secondary">
-                    ★ {formatRating(otherView.overall_rating)} · @{otherView.username}
-                  </p>
-                  <p className="text-xs text-muted mt-0.5">Vista el {formatDate(otherView.watched_at)}</p>
-                </div>
-                <span className="text-muted text-xs">{expandedView === 'other' ? '▲' : '▼'}</span>
-              </div>
-              {expandedView === 'other' && (
-                <div className="mt-3 pt-3 border-t border-secondary/20">
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <span>Fotografía: {otherView.photography_rating}/5</span>
-                    <span>Banda sonora: {otherView.soundtrack_rating}/5</span>
-                    <span>Guión: {otherView.screenplay_rating}/5</span>
-                    <span>Reparto: {otherView.cast_rating}/5</span>
+          {views.map((view) => {
+            const isMine = view.user_id === user?.id;
+            const expanded = expandedView === String(view.user_id);
+            return (
+              <div
+                key={view.user_id}
+                className={`rounded-xl p-4 cursor-pointer ${
+                  isMine
+                    ? 'bg-card border border-white/5'
+                    : 'bg-secondary/10 border border-secondary/20'
+                }`}
+                onClick={() => setExpandedView((prev) => (prev === String(view.user_id) ? null : String(view.user_id)))}
+                role="button"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className={`text-sm font-medium ${isMine ? 'text-white' : 'text-secondary'}`}>
+                      ★ {formatRating(view.overall_rating)} · {view.username || initialMovie.username}
+                    </p>
+                    <p className="text-xs text-muted mt-0.5">
+                      Vista el {formatDate(view.watched_at)}
+                      {view.is_favorite && ' · ❤️ Favorita'}
+                    </p>
                   </div>
-                  {'observation' in otherView && otherView.observation && (
-                    <p className="text-sm text-gray-300 mt-3 italic">"{otherView.observation}"</p>
-                  )}
+                  <span className="text-muted text-xs">{expanded ? '▲' : '▼'}</span>
                 </div>
-              )}
-            </div>
-          )}
+                {expanded && (
+                  <div className={`mt-3 pt-3 border-t ${isMine ? 'border-white/10' : 'border-secondary/20'}`}>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <span>Fotografía: {view.photography_rating}/5</span>
+                      <span>Banda sonora: {view.soundtrack_rating}/5</span>
+                      <span>Guión: {view.screenplay_rating}/5</span>
+                      <span>Reparto: {view.cast_rating}/5</span>
+                    </div>
+                    {view.observation && (
+                      <p className="text-sm text-gray-300 mt-3 italic">"{view.observation}"</p>
+                    )}
+                    {isMine && canEdit && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit();
+                        }}
+                        className="mt-3 text-xs text-secondary"
+                      >
+                        Editar mi registro
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {overview && (
             <div>

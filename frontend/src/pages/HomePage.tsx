@@ -69,11 +69,11 @@ export function HomePage() {
         <div className={viewMode === 'grid' ? 'grid grid-cols-3 gap-3' : 'flex flex-col gap-3'}>
           {movies.map((movie) => (
             <MovieCard
-              key={`${movie.movie_id}-${movie.user_id}`}
+              key={movie.movie_id}
               title={movie.title}
               posterPath={movie.poster_path}
               rating={movie.overall_rating}
-              username={movie.username}
+              watchedBy={movie.usernames}
               watchedAt={movie.watched_at}
               isFavorite={movie.is_favorite}
               layout={viewMode}

@@ -101,8 +101,8 @@ export class MovieService {
     };
   }
 
-  async getLatest(limit = 10) {
-    return movieViewRepository.getLatest(limit);
+  async getLatest(limit = 10, userId: number) {
+    return movieViewRepository.getLatest(limit, userId);
   }
 
   async searchLocal(query: string) {

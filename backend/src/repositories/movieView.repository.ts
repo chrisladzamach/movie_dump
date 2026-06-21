@@ -80,17 +80,27 @@ export class MovieViewRepository {
     return result.insertId;
   }
 
-  async getLatest(limit: number): Promise<Array<MovieViewWithUser & { title: string; poster_path: string | null; tmdb_id: number }>> {
+  async getLatest(
+    limit: number,
+    currentUserId: number
+  ): Promise<Array<MovieViewWithUser & { title: string; poster_path: string | null; tmdb_id: number; usernames: string }>> {
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT mv.*, u.username, m.title, m.poster_path, m.tmdb_id
+      `SELECT mv.*, u.username, m.title, m.poster_path, m.tmdb_id, all_usernames.usernames
        FROM movie_views mv
        INNER JOIN users u ON u.id = mv.user_id
        INNER JOIN movies m ON m.id = mv.movie_id
+       INNER JOIN (
+         SELECT mv2.movie_id, GROUP_CONCAT(DISTINCT u2.username ORDER BY u2.username SEPARATOR ', ') AS usernames
+         FROM movie_views mv2
+         INNER JOIN users u2 ON u2.id = mv2.user_id
+         GROUP BY mv2.movie_id
+       ) all_usernames ON all_usernames.movie_id = mv.movie_id
+       WHERE mv.user_id = :currentUserId
        ORDER BY mv.watched_at DESC, mv.updated_at DESC
        LIMIT :limit`,
-      { limit }
+      { limit, currentUserId }
     );
-    return rows as Array<MovieViewWithUser & { title: string; poster_path: string | null; tmdb_id: number }>;
+    return rows as Array<MovieViewWithUser & { title: string; poster_path: string | null; tmdb_id: number; usernames: string }>;
   }
 
   async getStats(): Promise<{
