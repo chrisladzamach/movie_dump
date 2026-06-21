@@ -12,7 +12,7 @@ export function HomePage() {
   const [movies, setMovies] = useState<LatestMovie[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [selectedMovie, setSelectedMovie] = useState<LatestMovie | null>(null);
   const { refreshKey } = useNotifications();
 
   useEffect(() => {
@@ -77,14 +77,14 @@ export function HomePage() {
               watchedAt={movie.watched_at}
               isFavorite={movie.is_favorite}
               layout={viewMode}
-              onClick={() => setSelectedMovieId(movie.movie_id)}
+              onClick={() => setSelectedMovie(movie)}
             />
           ))}
         </div>
       )}
 
-      {selectedMovieId && (
-        <MovieDetailModal movieId={selectedMovieId} onClose={() => setSelectedMovieId(null)} />
+      {selectedMovie && (
+        <MovieDetailModal initialMovie={selectedMovie} onClose={() => setSelectedMovie(null)} />
       )}
     </div>
   );

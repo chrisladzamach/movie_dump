@@ -5,6 +5,7 @@ import { getTmdbDetails } from '../services/tmdb.service';
 import {
   Movie,
   Comment,
+  LatestMovie,
   TmdbMovieDetails,
   getPosterUrl,
   formatRating,
@@ -13,98 +14,83 @@ import {
 import { MovieRegisterModal } from './MovieRegisterModal';
 
 interface MovieDetailModalProps {
-  movieId: number;
+  initialMovie: LatestMovie;
   onClose: () => void;
 }
 
-export function MovieDetailModal({ movieId, onClose }: MovieDetailModalProps) {
+export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProps) {
   const [movie, setMovie] = useState<Movie | null>(null);
+  const [tmdbDetails, setTmdbDetails] = useState<TmdbMovieDetails | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingMovie, setLoadingMovie] = useState(true);
+  const [loadingTmdb, setLoadingTmdb] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [editModal, setEditModal] = useState<TmdbMovieDetails | null>(null);
 
-  const loadMovie = async () => {
-    setLoading(true);
+  const loadDetails = async () => {
+    setLoadingTmdb(true);
+    try {
+      const details = await getTmdbDetails(initialMovie.tmdb_id);
+      setTmdbDetails(details);
+    } catch (err) {
+      console.error('Error cargando detalles TMDB:', err);
+    } finally {
+      setLoadingTmdb(false);
+    }
+  };
+
+  const loadBackendData = async () => {
+    setLoadingMovie(true);
     setError(null);
     try {
-      const movieData = await getMovieById(movieId);
+      const [movieData, commentsData] = await Promise.all([
+        getMovieById(initialMovie.movie_id),
+        getComments(initialMovie.movie_id),
+      ]);
       setMovie(movieData);
-    } catch (err) {
-      console.error('Error cargando película:', err);
-      setError(err instanceof Error ? err.message : 'No se pudo cargar la película');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadComments = async () => {
-    try {
-      const commentsData = await getComments(movieId);
       setComments(commentsData);
     } catch (err) {
-      console.error('Error cargando comentarios:', err);
+      console.error('Error cargando datos del backend:', err);
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar los datos completos');
+    } finally {
+      setLoadingMovie(false);
     }
-  };
-
-  const load = async () => {
-    await loadMovie();
-    await loadComments();
   };
 
   useEffect(() => {
-    load();
-  }, [movieId]);
+    loadDetails();
+    loadBackendData();
+  }, [initialMovie.movie_id, initialMovie.tmdb_id]);
 
   const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-    const updated = await addComment(movieId, newComment.trim());
-    setComments(updated);
-    setNewComment('');
+    try {
+      const updated = await addComment(initialMovie.movie_id, newComment.trim());
+      setComments(updated);
+      setNewComment('');
+    } catch (err) {
+      console.error('Error agregando comentario:', err);
+    }
   };
 
   const handleEdit = async () => {
-    if (!movie) return;
-    const details = await getTmdbDetails(movie.tmdb_id);
+    const details = tmdbDetails || (await getTmdbDetails(initialMovie.tmdb_id).catch(() => null));
+    if (!details) return;
     setEditModal(details);
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center">
-        <div className="text-muted">Cargando...</div>
-      </div>
-    );
-  }
+  const title = tmdbDetails?.title || initialMovie.title;
+  const posterPath = tmdbDetails?.poster_path || initialMovie.poster_path;
+  const releaseYear = tmdbDetails?.release_date?.split('-')[0];
+  const genres = tmdbDetails?.genres || [];
+  const cast = tmdbDetails?.cast || [];
+  const overview = tmdbDetails?.overview;
 
-  if (error || !movie) {
-    return (
-      <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4">
-        <div className="bg-surface rounded-2xl p-6 max-w-sm w-full text-center">
-          <p className="text-accent mb-2">Error al cargar</p>
-          <p className="text-sm text-gray-300 mb-4">{error || 'No se encontró la película'}</p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={load}
-              className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-semibold"
-            >
-              Reintentar
-            </button>
-            <button
-              onClick={onClose}
-              className="bg-card text-white px-4 py-2 rounded-lg text-sm"
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const view = movie.my_view;
+  const myView = movie?.my_view || initialMovie;
+  const otherView = movie?.other_view;
+  const watchedBy = movie?.watched_by;
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/80 flex items-end">
@@ -119,76 +105,80 @@ export function MovieDetailModal({ movieId, onClose }: MovieDetailModalProps) {
         <div className="p-4 space-y-4">
           <div className="flex gap-4">
             <img
-              src={getPosterUrl(movie.poster_path)}
-              alt={movie.title}
+              src={getPosterUrl(posterPath)}
+              alt={title}
               className="w-28 h-42 object-cover rounded-lg flex-shrink-0"
             />
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-white text-lg">{movie.title}</h3>
+              <h3 className="font-bold text-white text-lg">{title}</h3>
               <p className="text-xs text-muted mt-1">
-                {movie.release_date?.split('-')[0]} · Vista por:{' '}
-                {movie.watched_by === 'yo'
+                {releaseYear ? `${releaseYear} · ` : ''}
+                Vista por:{' '}
+                {watchedBy === 'yo'
                   ? 'Yo'
-                  : movie.watched_by === 'ambos'
+                  : watchedBy === 'ambos'
                   ? 'Ambos'
-                  : movie.watched_by}
+                  : watchedBy || `@${initialMovie.username}`}
               </p>
               <div className="flex flex-wrap gap-1 mt-2">
-                {movie.genres?.map((g) => (
+                {genres.map((g) => (
                   <span key={g.id} className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">
                     {g.name}
                   </span>
                 ))}
               </div>
+              {loadingTmdb && <p className="text-[10px] text-muted mt-2">Cargando detalles...</p>}
             </div>
           </div>
 
-          {view && (
-            <div className="bg-card rounded-xl p-4 border border-white/5">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-primary font-bold text-xl">★ {formatRating(view.overall_rating)}</span>
-                {view.is_favorite && <span>❤️ Favorita</span>}
-              </div>
-              <p className="text-xs text-muted mb-2">Vista el {formatDate(view.watched_at)}</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <span>Fotografía: {view.photography_rating}/5</span>
-                <span>Banda sonora: {view.soundtrack_rating}/5</span>
-                <span>Guión: {view.screenplay_rating}/5</span>
-                <span>Reparto: {view.cast_rating}/5</span>
-              </div>
-              {view.observation && (
-                <p className="text-sm text-gray-300 mt-3 italic">"{view.observation}"</p>
-              )}
-              <button onClick={handleEdit} className="mt-3 text-xs text-secondary">
-                Editar mi registro
-              </button>
+          <div className="bg-card rounded-xl p-4 border border-white/5">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-primary font-bold text-xl">
+                ★ {formatRating(myView.overall_rating)}
+              </span>
+              {myView.is_favorite && <span>❤️ Favorita</span>}
             </div>
-          )}
+            <p className="text-xs text-muted mb-2">
+              Vista el {formatDate(myView.watched_at)} por @{initialMovie.username}
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <span>Fotografía: {myView.photography_rating}/5</span>
+              <span>Banda sonora: {myView.soundtrack_rating}/5</span>
+              <span>Guión: {myView.screenplay_rating}/5</span>
+              <span>Reparto: {myView.cast_rating}/5</span>
+            </div>
+            {'observation' in myView && myView.observation && (
+              <p className="text-sm text-gray-300 mt-3 italic">"{myView.observation}"</p>
+            )}
+            <button onClick={handleEdit} className="mt-3 text-xs text-secondary">
+              Editar mi registro
+            </button>
+          </div>
 
-          {movie.other_view && (
+          {otherView && (
             <div className="bg-secondary/10 rounded-xl p-4 border border-secondary/20">
               <p className="text-sm font-medium text-secondary">
-                {movie.other_view.username} · ★ {formatRating(movie.other_view.overall_rating)}
+                {otherView.username} · ★ {formatRating(otherView.overall_rating)}
               </p>
-              <p className="text-xs text-muted mt-1">Vista el {formatDate(movie.other_view.watched_at)}</p>
-              {movie.other_view.observation && (
-                <p className="text-sm text-gray-300 mt-2 italic">"{movie.other_view.observation}"</p>
+              <p className="text-xs text-muted mt-1">Vista el {formatDate(otherView.watched_at)}</p>
+              {otherView.observation && (
+                <p className="text-sm text-gray-300 mt-2 italic">"{otherView.observation}"</p>
               )}
             </div>
           )}
 
-          {movie.overview && (
+          {overview && (
             <div>
               <h3 className="text-sm font-semibold text-primary mb-2">Sinopsis</h3>
-              <p className="text-sm text-gray-300 leading-relaxed">{movie.overview}</p>
+              <p className="text-sm text-gray-300 leading-relaxed">{overview}</p>
             </div>
           )}
 
-          {movie.cast_data && movie.cast_data.length > 0 && (
+          {cast.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-primary mb-2">Reparto</h3>
               <div className="flex gap-3 overflow-x-auto scrollbar-hide">
-                {movie.cast_data.map((c) => (
+                {cast.map((c) => (
                   <div key={c.id} className="flex-shrink-0 w-20 text-center">
                     <div className="w-16 h-16 mx-auto rounded-full bg-card overflow-hidden">
                       {c.profile_path ? (
@@ -209,48 +199,56 @@ export function MovieDetailModal({ movieId, onClose }: MovieDetailModalProps) {
             </div>
           )}
 
-          <div>
-            <h3 className="text-sm font-semibold text-primary mb-3">Comentarios</h3>
-            <div className="space-y-3 mb-4">
-              {comments.map((c) => (
-                <div key={c.id} className="bg-card rounded-lg p-3 border border-white/5">
-                  <p className="text-xs text-primary font-medium">{c.username}</p>
-                  <p className="text-sm text-gray-300 mt-1">{c.content}</p>
-                </div>
-              ))}
-              {comments.length === 0 && <p className="text-muted text-sm">Sin comentarios aún</p>}
+          {!loadingMovie && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary mb-3">Comentarios</h3>
+              <div className="space-y-3 mb-4">
+                {comments.map((c) => (
+                  <div key={c.id} className="bg-card rounded-lg p-3 border border-white/5">
+                    <p className="text-xs text-primary font-medium">{c.username}</p>
+                    <p className="text-sm text-gray-300 mt-1">{c.content}</p>
+                  </div>
+                ))}
+                {comments.length === 0 && <p className="text-muted text-sm">Sin comentarios aún</p>}
+              </div>
+              <form onSubmit={handleComment} className="flex gap-2">
+                <input
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Escribe un comentario..."
+                  className="flex-1 bg-card border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                />
+                <button
+                  type="submit"
+                  className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-semibold"
+                >
+                  Enviar
+                </button>
+              </form>
             </div>
-            <form onSubmit={handleComment} className="flex gap-2">
-              <input
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Escribe un comentario..."
-                className="flex-1 bg-card border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-              />
-              <button
-                type="submit"
-                className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-semibold"
-              >
-                Enviar
-              </button>
-            </form>
-          </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-accent">
+              Datos complementarios no disponibles: {error}
+            </p>
+          )}
         </div>
       </div>
 
-      {editModal && view && (
+      {editModal && (
         <MovieRegisterModal
           movie={editModal}
           onClose={() => setEditModal(null)}
-          onSuccess={load}
+          onSuccess={loadBackendData}
           initialView={{
-            watchedAt: view.watched_at,
-            photographyRating: view.photography_rating,
-            soundtrackRating: view.soundtrack_rating,
-            screenplayRating: view.screenplay_rating,
-            castRating: view.cast_rating,
-            observation: view.observation || '',
-            isFavorite: view.is_favorite,
+            watchedAt: myView.watched_at,
+            photographyRating: myView.photography_rating,
+            soundtrackRating: myView.soundtrack_rating,
+            screenplayRating: myView.screenplay_rating,
+            castRating: myView.cast_rating,
+            observation: ('observation' in myView ? myView.observation : '') || '',
+            isFavorite: myView.is_favorite,
           }}
         />
       )}
