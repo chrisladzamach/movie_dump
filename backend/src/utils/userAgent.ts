@@ -7,6 +7,12 @@ const DESKTOP_UA_REGEX =
 export function isMobileUserAgent(userAgent: string | undefined): boolean {
   if (!userAgent) return false;
 
+  // Render health-checks y similares no tienen User-Agent móvil,
+  // pero deben poder acceder a la API.
+  if (userAgent.includes('render') || userAgent.includes('curl') || userAgent.includes('Postman')) {
+    return true;
+  }
+
   if (MOBILE_UA_REGEX.test(userAgent)) {
     return true;
   }

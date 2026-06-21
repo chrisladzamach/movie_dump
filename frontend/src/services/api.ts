@@ -52,7 +52,7 @@ export async function apiFetch<T>(
     const message =
       typeof data === 'object' && data !== null && 'message' in data
         ? String((data as { message?: unknown }).message)
-        : 'Error en la solicitud';
+        : `Error ${response.status}: ${text.slice(0, 200)}`;
     throw new ApiError(message, response.status);
   }
 
