@@ -85,18 +85,41 @@ export class MovieViewRepository {
     currentUserId: number
   ): Promise<Array<MovieViewWithUser & { title: string; poster_path: string | null; tmdb_id: number; usernames: string }>> {
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT mv.*, u.username, m.title, m.poster_path, m.tmdb_id, all_usernames.usernames
-       FROM movie_views mv
-       INNER JOIN users u ON u.id = mv.user_id
-       INNER JOIN movies m ON m.id = mv.movie_id
-       INNER JOIN (
-         SELECT mv2.movie_id, GROUP_CONCAT(DISTINCT u2.username ORDER BY u2.username SEPARATOR ', ') AS usernames
-         FROM movie_views mv2
-         INNER JOIN users u2 ON u2.id = mv2.user_id
-         GROUP BY mv2.movie_id
-       ) all_usernames ON all_usernames.movie_id = mv.movie_id
-       WHERE mv.user_id = :currentUserId
-       ORDER BY mv.watched_at DESC, mv.updated_at DESC
+      `WITH ranked_views AS (
+         SELECT
+           mv.*,
+           u.username,
+           m.title,
+           m.poster_path,
+           m.tmdb_id,
+           ROW_NUMBER() OVER (
+             PARTITION BY mv.movie_id
+             ORDER BY
+               CASE WHEN mv.user_id = :currentUserId THEN 0 ELSE 1 END,
+               mv.watched_at DESC,
+               mv.updated_at DESC
+           ) AS rn
+         FROM movie_views mv
+         INNER JOIN users u ON u.id = mv.user_id
+         INNER JOIN movies m ON m.id = mv.movie_id
+       ),
+       all_usernames AS (
+         SELECT mv.movie_id, GROUP_CONCAT(DISTINCT u.username ORDER BY u.username SEPARATOR ', ') AS usernames
+         FROM movie_views mv
+         INNER JOIN users u ON u.id = mv.user_id
+         GROUP BY mv.movie_id
+       ),
+       latest_activity AS (
+         SELECT movie_id, MAX(watched_at) AS latest_watched_at
+         FROM movie_views
+         GROUP BY movie_id
+       )
+       SELECT rv.*, an.usernames
+       FROM ranked_views rv
+       INNER JOIN all_usernames an ON an.movie_id = rv.movie_id
+       INNER JOIN latest_activity la ON la.movie_id = rv.movie_id
+       WHERE rv.rn = 1
+       ORDER BY la.latest_watched_at DESC, rv.updated_at DESC
        LIMIT :limit`,
       { limit, currentUserId }
     );
