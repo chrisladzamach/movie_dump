@@ -26,7 +26,6 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingMovie, setLoadingMovie] = useState(true);
   const [loadingTmdb, setLoadingTmdb] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [editModal, setEditModal] = useState<TmdbMovieDetails | null>(null);
   const [expandedView, setExpandedView] = useState<'mine' | 'other' | null>(null);
 
@@ -44,7 +43,6 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
 
   const loadBackendData = async () => {
     setLoadingMovie(true);
-    setError(null);
     try {
       const [movieData, commentsData] = await Promise.all([
         getMovieById(initialMovie.movie_id),
@@ -54,7 +52,6 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
       setComments(commentsData);
     } catch (err) {
       console.error('Error cargando datos del backend:', err);
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar los datos completos');
     } finally {
       setLoadingMovie(false);
     }
@@ -243,12 +240,6 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
                 ))}
               </div>
             </div>
-          )}
-
-          {error && (
-            <p className="text-xs text-accent">
-              Datos complementarios no disponibles: {error}
-            </p>
           )}
         </div>
       </div>
