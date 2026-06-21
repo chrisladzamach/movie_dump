@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getMovieById } from '../services/movie.service';
-import { getComments, addComment } from '../services/comment.service';
+import { getComments } from '../services/comment.service';
 import { getTmdbDetails } from '../services/tmdb.service';
 import {
   Movie,
@@ -12,6 +12,7 @@ import {
   formatDate,
 } from '../types';
 import { MovieRegisterModal } from './MovieRegisterModal';
+import { useAuth } from '../hooks/useAuth';
 
 interface MovieDetailModalProps {
   initialMovie: LatestMovie;
@@ -19,13 +20,13 @@ interface MovieDetailModalProps {
 }
 
 export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProps) {
+  const { user } = useAuth();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [tmdbDetails, setTmdbDetails] = useState<TmdbMovieDetails | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingMovie, setLoadingMovie] = useState(true);
   const [loadingTmdb, setLoadingTmdb] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState('');
   const [editModal, setEditModal] = useState<TmdbMovieDetails | null>(null);
 
   const loadDetails = async () => {
@@ -63,18 +64,6 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
     loadBackendData();
   }, [initialMovie.movie_id, initialMovie.tmdb_id]);
 
-  const handleComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    try {
-      const updated = await addComment(initialMovie.movie_id, newComment.trim());
-      setComments(updated);
-      setNewComment('');
-    } catch (err) {
-      console.error('Error agregando comentario:', err);
-    }
-  };
-
   const handleEdit = async () => {
     const details = tmdbDetails || (await getTmdbDetails(initialMovie.tmdb_id).catch(() => null));
     if (!details) return;
@@ -88,9 +77,11 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
   const cast = tmdbDetails?.cast || [];
   const overview = tmdbDetails?.overview;
 
-  const myView = movie?.my_view || initialMovie;
-  const otherView = movie?.other_view;
+  const isMyInitialView = user?.id === initialMovie.user_id;
+  const myView = movie?.my_view || (isMyInitialView ? initialMovie : null);
+  const otherView = movie?.other_view || (!isMyInitialView ? initialMovie : null);
   const watchedBy = movie?.watched_by;
+  const canEdit = Boolean(myView) && myView?.user_id === user?.id;
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/80 flex items-end">
@@ -131,29 +122,33 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
             </div>
           </div>
 
-          <div className="bg-card rounded-xl p-4 border border-white/5">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-primary font-bold text-xl">
-                ★ {formatRating(myView.overall_rating)}
-              </span>
-              {myView.is_favorite && <span>❤️ Favorita</span>}
+          {myView && (
+            <div className="bg-card rounded-xl p-4 border border-white/5">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-primary font-bold text-xl">
+                  ★ {formatRating(myView.overall_rating)}
+                </span>
+                {myView.is_favorite && <span>❤️ Favorita</span>}
+              </div>
+              <p className="text-xs text-muted mb-2">
+                Vista el {formatDate(myView.watched_at)} por @{myView.username || initialMovie.username}
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <span>Fotografía: {myView.photography_rating}/5</span>
+                <span>Banda sonora: {myView.soundtrack_rating}/5</span>
+                <span>Guión: {myView.screenplay_rating}/5</span>
+                <span>Reparto: {myView.cast_rating}/5</span>
+              </div>
+              {'observation' in myView && myView.observation && (
+                <p className="text-sm text-gray-300 mt-3 italic">"{myView.observation}"</p>
+              )}
+              {canEdit && (
+                <button onClick={handleEdit} className="mt-3 text-xs text-secondary">
+                  Editar mi registro
+                </button>
+              )}
             </div>
-            <p className="text-xs text-muted mb-2">
-              Vista el {formatDate(myView.watched_at)} por @{initialMovie.username}
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <span>Fotografía: {myView.photography_rating}/5</span>
-              <span>Banda sonora: {myView.soundtrack_rating}/5</span>
-              <span>Guión: {myView.screenplay_rating}/5</span>
-              <span>Reparto: {myView.cast_rating}/5</span>
-            </div>
-            {'observation' in myView && myView.observation && (
-              <p className="text-sm text-gray-300 mt-3 italic">"{myView.observation}"</p>
-            )}
-            <button onClick={handleEdit} className="mt-3 text-xs text-secondary">
-              Editar mi registro
-            </button>
-          </div>
+          )}
 
           {otherView && (
             <div className="bg-secondary/10 rounded-xl p-4 border border-secondary/20">
@@ -161,7 +156,7 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
                 {otherView.username} · ★ {formatRating(otherView.overall_rating)}
               </p>
               <p className="text-xs text-muted mt-1">Vista el {formatDate(otherView.watched_at)}</p>
-              {otherView.observation && (
+              {'observation' in otherView && otherView.observation && (
                 <p className="text-sm text-gray-300 mt-2 italic">"{otherView.observation}"</p>
               )}
             </div>
@@ -199,32 +194,17 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
             </div>
           )}
 
-          {!loadingMovie && (
+          {!loadingMovie && comments.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-primary mb-3">Comentarios</h3>
-              <div className="space-y-3 mb-4">
+              <div className="space-y-3">
                 {comments.map((c) => (
                   <div key={c.id} className="bg-card rounded-lg p-3 border border-white/5">
                     <p className="text-xs text-primary font-medium">{c.username}</p>
                     <p className="text-sm text-gray-300 mt-1">{c.content}</p>
                   </div>
                 ))}
-                {comments.length === 0 && <p className="text-muted text-sm">Sin comentarios aún</p>}
               </div>
-              <form onSubmit={handleComment} className="flex gap-2">
-                <input
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Escribe un comentario..."
-                  className="flex-1 bg-card border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                />
-                <button
-                  type="submit"
-                  className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-semibold"
-                >
-                  Enviar
-                </button>
-              </form>
             </div>
           )}
 
@@ -236,7 +216,7 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
         </div>
       </div>
 
-      {editModal && (
+      {editModal && myView && (
         <MovieRegisterModal
           movie={editModal}
           onClose={() => setEditModal(null)}
