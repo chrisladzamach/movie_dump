@@ -28,6 +28,7 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
   const [loadingTmdb, setLoadingTmdb] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editModal, setEditModal] = useState<TmdbMovieDetails | null>(null);
+  const [expandedView, setExpandedView] = useState<'mine' | 'other' | null>(null);
 
   const loadDetails = async () => {
     setLoadingTmdb(true);
@@ -123,41 +124,77 @@ export function MovieDetailModal({ initialMovie, onClose }: MovieDetailModalProp
           </div>
 
           {myView && (
-            <div className="bg-card rounded-xl p-4 border border-white/5">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-primary font-bold text-xl">
-                  ★ {formatRating(myView.overall_rating)}
-                </span>
-                {myView.is_favorite && <span>❤️ Favorita</span>}
+            <div
+              className="bg-card rounded-xl p-4 border border-white/5 cursor-pointer"
+              onClick={() => setExpandedView((prev) => (prev === 'mine' ? null : 'mine'))}
+              role="button"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    ★ {formatRating(myView.overall_rating)} · @{myView.username || initialMovie.username}
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">
+                    Vista el {formatDate(myView.watched_at)}
+                    {myView.is_favorite && ' · ❤️ Favorita'}
+                  </p>
+                </div>
+                <span className="text-muted text-xs">{expandedView === 'mine' ? '▲' : '▼'}</span>
               </div>
-              <p className="text-xs text-muted mb-2">
-                Vista el {formatDate(myView.watched_at)} por @{myView.username || initialMovie.username}
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <span>Fotografía: {myView.photography_rating}/5</span>
-                <span>Banda sonora: {myView.soundtrack_rating}/5</span>
-                <span>Guión: {myView.screenplay_rating}/5</span>
-                <span>Reparto: {myView.cast_rating}/5</span>
-              </div>
-              {'observation' in myView && myView.observation && (
-                <p className="text-sm text-gray-300 mt-3 italic">"{myView.observation}"</p>
-              )}
-              {canEdit && (
-                <button onClick={handleEdit} className="mt-3 text-xs text-secondary">
-                  Editar mi registro
-                </button>
+              {expandedView === 'mine' && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <span>Fotografía: {myView.photography_rating}/5</span>
+                    <span>Banda sonora: {myView.soundtrack_rating}/5</span>
+                    <span>Guión: {myView.screenplay_rating}/5</span>
+                    <span>Reparto: {myView.cast_rating}/5</span>
+                  </div>
+                  {'observation' in myView && myView.observation && (
+                    <p className="text-sm text-gray-300 mt-3 italic">"{myView.observation}"</p>
+                  )}
+                  {canEdit && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit();
+                      }}
+                      className="mt-3 text-xs text-secondary"
+                    >
+                      Editar mi registro
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
 
           {otherView && (
-            <div className="bg-secondary/10 rounded-xl p-4 border border-secondary/20">
-              <p className="text-sm font-medium text-secondary">
-                {otherView.username} · ★ {formatRating(otherView.overall_rating)}
-              </p>
-              <p className="text-xs text-muted mt-1">Vista el {formatDate(otherView.watched_at)}</p>
-              {'observation' in otherView && otherView.observation && (
-                <p className="text-sm text-gray-300 mt-2 italic">"{otherView.observation}"</p>
+            <div
+              className="bg-secondary/10 rounded-xl p-4 border border-secondary/20 cursor-pointer"
+              onClick={() => setExpandedView((prev) => (prev === 'other' ? null : 'other'))}
+              role="button"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-secondary">
+                    ★ {formatRating(otherView.overall_rating)} · @{otherView.username}
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">Vista el {formatDate(otherView.watched_at)}</p>
+                </div>
+                <span className="text-muted text-xs">{expandedView === 'other' ? '▲' : '▼'}</span>
+              </div>
+              {expandedView === 'other' && (
+                <div className="mt-3 pt-3 border-t border-secondary/20">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <span>Fotografía: {otherView.photography_rating}/5</span>
+                    <span>Banda sonora: {otherView.soundtrack_rating}/5</span>
+                    <span>Guión: {otherView.screenplay_rating}/5</span>
+                    <span>Reparto: {otherView.cast_rating}/5</span>
+                  </div>
+                  {'observation' in otherView && otherView.observation && (
+                    <p className="text-sm text-gray-300 mt-3 italic">"{otherView.observation}"</p>
+                  )}
+                </div>
               )}
             </div>
           )}
